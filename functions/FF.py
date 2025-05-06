@@ -44,26 +44,33 @@ def FF(returns, factRet, lambda_, K):
     Sigma_f = np.cov(F, rowvar=False, ddof=1)   # (3,3)
     Q       = B.dot(Sigma_f).dot(B.T) + np.diag(eps_var)        # n x n asset covariance matrix
     # ----------------------------------------------------------------------
-    
+    print(B)
     return mu, Q
 
 
 if __name__ == "__main__":
     # Example usage
+    import pandas as pd
+
     returns = pd.DataFrame({
         'Asset1': [0.01, 0.02, 0.015],
         'Asset2': [0.02, 0.025, 0.03]
     })
-    
+
     factRet = pd.DataFrame({
         'Mkt_RF': [0.01, 0.015, 0.02],
         'SMB': [0.005, 0.007, 0.009],
-        'HML': [0.002, 0.003, 0.004]
+        'HML': [0.002, 0.003, 0.004],
+        'RMW': [0.001, 0.002, 0.003],
+        'CMA': [0.0015, 0.0025, 0.0035],
+        'Mom': [0.0005, 0.0007, 0.0009],
+        'ST_Rev': [0.0002, 0.0003, 0.0004],
+        'LT_Rev': [0.0003, 0.0004, 0.0005]
     })
-    
-    lambda_ = 0
-    K = 0
-    
+
+    lambda_ = 1
+    K = 2
+
     mu, Q = FF(returns, factRet, lambda_, K)
     print("Expected Returns:", mu)
-    print("Covariance Matrix:\n", Q)
+    print("Covariance Matrix:", Q)
