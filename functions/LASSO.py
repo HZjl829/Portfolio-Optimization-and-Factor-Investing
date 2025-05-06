@@ -14,10 +14,10 @@ def LASSO(returns, factRet, lambda_, K):
 
     # *************** WRITE YOUR CODE HERE ***************
     # ----------------------------------------------------------------------
-     # 1) Align on dates & drop missing
+     # Align on dates & drop missing
     data = returns.join(factRet, how='inner').dropna()
 
-    # 2) Factor matrix F (T×8) and compute its mean/covariance
+    # Factor matrix F (T×8) and compute its mean/covariance
     factor_cols = ['Mkt_RF','SMB','HML','RMW','CMA','Mom','ST_Rev','LT_Rev']
     F = data[factor_cols].values
     T, p = F.shape
@@ -32,7 +32,7 @@ def LASSO(returns, factRet, lambda_, K):
     B       = np.zeros((N, p))
     eps_var = np.zeros(N)
 
-    # 3) Fit a Lasso for each asset
+    # Fit a Lasso for each asset
     for i, asset in enumerate(assets):
         y = data[asset].values
         model = Lasso(alpha=lambda_, fit_intercept=True, max_iter=10000)
@@ -43,9 +43,9 @@ def LASSO(returns, factRet, lambda_, K):
         resid      = y - model.predict(F)
         eps_var[i] = np.var(resid, ddof=1)
 
-    # 4) Expected returns: 
+    # Expected returns: 
     mu = alpha + B.dot(f_mean)          # n x 1 vector of asset exp. returns
-    # 5) Covariance: 
+    # Covariance: 
     Q  = B.dot(Sigma_f).dot(B.T) + np.diag(eps_var)         # n x n asset covariance matrix
     
 

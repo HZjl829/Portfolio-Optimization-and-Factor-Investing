@@ -15,13 +15,13 @@ def MVO(mu, Q, targetRet):
      
     n = len(mu)
     
-    # 1) Decision variable: portfolio weights
+    # Decision variable: portfolio weights
     x = cp.Variable(n)
     
-    # 2) Objective: minimize portfolio variance x' Q x
+    # Objective: minimize portfolio variance x' Q x
     obj = cp.Minimize(cp.quad_form(x, Q))
     
-    # 3) Constraints:
+    # Constraints:
     #    – Full investment
     #    – Achieve at least targetRet
     #    – No short sales
@@ -31,11 +31,11 @@ def MVO(mu, Q, targetRet):
         x >= 0
     ]
     
-    # 4) Solve the QP
+    # Solve the QP
     prob = cp.Problem(obj, constraints)
     prob.solve()  # you can specify solver=cp.GUROBI if available
     
-    # 5) Return the numeric weights
+    # Return the numeric weights
     return x.value
 
 if __name__ == "__main__":
