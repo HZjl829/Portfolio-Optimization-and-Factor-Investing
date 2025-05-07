@@ -3,49 +3,63 @@ import pandas as pd
 
 def FF(returns, factRet, lambda_, K):
     """
-    % Use this function to calibrate the Fama-French 3-factor model. Note
-    % that you will not use lambda or K in this model (lambda is for LASSO,
-    % and K is for BSS).
-    """
+    Calibrate the Fama-French 3-factor model.
 
-    # *************** WRITE YOUR CODE HERE ***************
+    Returns:
+      mu      : n-vector of expected returns
+      Q       : n×n asset covariance matrix
+      adj_R2  : n-vector of adjusted R² for each asset regression
+    """
     # ----------------------------------------------------------------------
     # align dates and drop any rows with missing data
     data = returns.join(factRet[['Mkt_RF','SMB','HML']], how='inner').dropna()
     
     # build design matrix X = [1, Mkt_RF, SMB, HML]
-    F = data[['Mkt_RF','SMB','HML']].values  # shape (T, 3)
+    F = data[['Mkt_RF','SMB','HML']].values    # (T, 3)
     T = F.shape[0]
-    X = np.hstack([np.ones((T, 1)), F])       # shape (T, 4)
+    X = np.hstack([np.ones((T, 1)), F])        # (T, 4)
     
-    # prepare storage
     assets = returns.columns
     N = len(assets)
-    p = F.shape[1]
     
-    B       = np.zeros((N, p))    # factor loadings
-    alpha   = np.zeros(N)         # intercepts
-    eps_var = np.zeros(N)         # idiosyncratic variances 
+    # storage
+    B       = np.zeros((N, 3))
+    alpha   = np.zeros(N)
+    eps_var = np.zeros(N)
+    adj_R2  = np.zeros(N)
     
     # run OLS for each asset
     for i, asset in enumerate(assets):
-        y = data[asset].values                # (T,)
+        y, *_ = data[asset].values, 
         coeffs, *_ = np.linalg.lstsq(X, y, rcond=None)
-        alpha[i]   = coeffs[0]
-        B[i, :]    = coeffs[1:]
-        resid      = y - X.dot(coeffs)
+        
+        alpha[i] = coeffs[0]
+        B[i, :]  = coeffs[1:]
+        
+        resid = y - X.dot(coeffs)
         eps_var[i] = resid.var(ddof=1)
+        
+        # compute R²
+        SSR = np.sum(resid**2)
+        SST = np.sum((y - y.mean())**2)
+        R2  = 1 - SSR/SST
+        
+        # count only nonzero betas (exclude intercept)
+        p_eff = np.count_nonzero(coeffs[1:])
+        
+        # adjusted R² with p_eff predictors
+        adj_R2[i] = 1 - (1 - R2) * (T - 1) / (T - p_eff - 1)
     
-    # compute expected returns 
-    f_mean = F.mean(axis=0)                # (3,)
-    mu     = alpha + B.dot(f_mean)         # n x 1 vector of asset exp. returns      
+    # expected returns
+    f_mean = F.mean(axis=0)             # (3,)
+    mu     = alpha + B.dot(f_mean)      # (N,)
     
-    # build factor‐model covariance 
-    Sigma_f = np.cov(F, rowvar=False, ddof=1)   # (3,3)
-    Q       = B.dot(Sigma_f).dot(B.T) + np.diag(eps_var)        # n x n asset covariance matrix
+    # factor-model covariance
+    Sigma_f = np.cov(F, rowvar=False, ddof=1)  
+    Q       = B.dot(Sigma_f).dot(B.T) + np.diag(eps_var)
     # ----------------------------------------------------------------------
-    print(B)
-    return mu, Q
+    
+    return mu, Q, adj_R2
 
 
 if __name__ == "__main__":

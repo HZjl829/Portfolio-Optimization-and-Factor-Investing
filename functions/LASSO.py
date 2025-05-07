@@ -3,25 +3,23 @@ from sklearn.linear_model import Lasso
 
 def LASSO(returns, factRet, lambda_, K):
     """
-    % Use this function for the LASSO model. Note that you will not use K
-    % in this model (K is for BSS).
-    %
-    % You should use an optimizer to solve this problem. Be sure to comment
-    % on your code to (briefly) explain your procedure.
+    Use this function for the LASSO model. Note that you will not use K
+    in this model (K is for BSS).
 
-
+    Returns:
+      mu      : n-vector of expected returns
+      Q       : n×n asset covariance matrix
+      adj_R2  : n-vector of adjusted R² for each asset regression
     """
-
-    # *************** WRITE YOUR CODE HERE ***************
     # ----------------------------------------------------------------------
-     # Align on dates & drop missing
+    # Align on dates & drop missing
     data = returns.join(factRet, how='inner').dropna()
 
     # Factor matrix F (T×8) and compute its mean/covariance
     factor_cols = ['Mkt_RF','SMB','HML','RMW','CMA','Mom','ST_Rev','LT_Rev']
     F = data[factor_cols].values
     T, p = F.shape
-    f_mean = F.mean(axis=0)
+    f_mean  = F.mean(axis=0)
     Sigma_f = np.cov(F, rowvar=False, ddof=1)
 
     assets = returns.columns
@@ -31,6 +29,7 @@ def LASSO(returns, factRet, lambda_, K):
     alpha   = np.zeros(N)
     B       = np.zeros((N, p))
     eps_var = np.zeros(N)
+    adj_R2  = np.zeros(N)
 
     # Fit a Lasso for each asset
     for i, asset in enumerate(assets):
@@ -38,21 +37,30 @@ def LASSO(returns, factRet, lambda_, K):
         model = Lasso(alpha=lambda_, fit_intercept=True, max_iter=10000)
         model.fit(F, y)
 
-        alpha[i]   = model.intercept_
-        B[i, :]    = model.coef_
-        resid      = y - model.predict(F)
+        alpha[i] = model.intercept_
+        B[i, :]  = model.coef_
+        resid    = y - model.predict(F)
         eps_var[i] = np.var(resid, ddof=1)
 
-    # Expected returns: 
-    mu = alpha + B.dot(f_mean)          # n x 1 vector of asset exp. returns
-    # Covariance: 
-    Q  = B.dot(Sigma_f).dot(B.T) + np.diag(eps_var)         # n x n asset covariance matrix
-    
+        # Compute R²
+        SSR = np.sum(resid**2)
+        SST = np.sum((y - y.mean())**2)
+        R2  = 1 - SSR / SST
 
+        # count only non-zero factors
+        p_eff = np.count_nonzero(model.coef_)
+
+        # adjusted R² penalizes only the actually used predictors
+        adj_R2[i] = 1 - (1 - R2) * (T - 1) / (T - p_eff - 1)
+
+    # Expected returns
+    mu = alpha + B.dot(f_mean)          # (n,)
+
+    # Covariance
+    Q  = B.dot(Sigma_f).dot(B.T) + np.diag(eps_var)  # (n, n)
     # ----------------------------------------------------------------------
-    print(B)
-    print(alpha)
-    return mu, Q
+
+    return mu, Q, adj_R2
 
 
 if __name__ == "__main__":

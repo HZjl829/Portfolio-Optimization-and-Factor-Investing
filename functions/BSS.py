@@ -40,6 +40,7 @@ def BSS(returns, factRet, lambda_, K):
     alpha = np.zeros(N)
     B     = np.zeros((N, p))
     eps_var = np.zeros(N)
+    adj_R2 = np.zeros(N)
 
     # Solve a mixed-integer QP for each asset
     for i, asset in enumerate(assets):
@@ -85,17 +86,27 @@ def BSS(returns, factRet, lambda_, K):
         resid      = y - X.dot(sol)
         eps_var[i] = np.var(resid, ddof=1)
 
+        # Compute R² and adjusted R²
+        SSR = np.sum(resid**2)
+        SST = np.sum((y - y.mean())**2)
+        R2  = 1 - SSR/SST
+        p_eff = np.count_nonzero(sol[1:])
+
+        # Adjusted R² using the effective number of predictors
+        adj_R2[i] = 1 - (1 - R2) * (T - 1) / (T - p_eff - 1)
+        
+
     # Compute μ and Σ as in a factor model
     f_mean = F.mean(axis=0)                   # (8,)
     Sigma_f = np.cov(F, rowvar=False, ddof=1)  # (8,8)
     
 
-    print(B)
+    # print(B)
     mu = alpha + B.dot(f_mean)
     Q  = B.dot(Sigma_f).dot(B.T) + np.diag(eps_var)
     # ----------------------------------------------------------------------
 
-    return mu, Q
+    return mu, Q, adj_R2
 
 
 if __name__ == "__main__":
